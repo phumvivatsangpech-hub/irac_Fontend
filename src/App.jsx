@@ -11,6 +11,11 @@ const GROWTH_STAGES = [
   { stage: "ระยะผลโต/เก็บเกี่ยว", tips: "ตรวจหนอนเจาะเมล็ด และเว้นระยะปลอดภัย PHI ก่อนเก็บเกี่ยว", color: "#795548" }
 ];
 
+// --- ประกาศ API_BASE_URL (แก้ไขจุดนี้) ---
+const API_BASE_URL = window.location.hostname === "localhost" 
+  ? "http://localhost:3000" 
+  : "https://irac-backend-cao4.onrender.com"; 
+
 // --- 1. Modern Weather System ---
 function WeatherAlert({ user }) {
   const apiKey = "69ca605b89577740afd53f10cad86cf2";
@@ -87,7 +92,7 @@ function WeatherAlert({ user }) {
   );
 }
 
-// --- 2. System Guide Component (ละเอียดยิบ) ---
+// --- 2. System Guide Component ---
 function SystemGuide() {
   const guides = [
     { icon: "🛡️", t: "ระบบ IRAC/GAP", c: "ช่วยเลือกกลุ่มยาตามกลไกการออกฤทธิ์ เพื่อป้องกันการดื้อยาของแมลง และบันทึกข้อมูลตามมาตรฐานความปลอดภัย GAP" },
@@ -143,7 +148,7 @@ function CalendarView({ user, pests }) {
   );
 }
 
-// --- 4. Main Application Layout ---
+// --- 4. Main Application Layout (แก้ไข fetch URLs) ---
 function MainApp({ user }) {
   const [view, setView] = useState('record');
   const [pests, setPests] = useState([]);
@@ -152,20 +157,20 @@ function MainApp({ user }) {
   const [moaGroups, setMoaGroups] = useState([]);
   const [gapData, setGapData] = useState({ dosage: '', phi: '', image: null });
 
-  const fetchH = () => { if (user?.id) fetch(`http://localhost:3000/api/history/${user.id}`).then(res => res.json()).then(data => setHistory(data)); };
-  useEffect(() => { fetch('http://localhost:3000/api/pests').then(res => res.json()).then(data => setPests(data)); fetchH(); }, [user]);
-  useEffect(() => { if (selectedPest) fetch(`http://localhost:3000/api/moa/${selectedPest}`).then(res => res.json()).then(data => setMoaGroups(data)); }, [selectedPest]);
+  const fetchH = () => { if (user?.id) fetch(`${API_BASE_URL}/api/history/${user.id}`).then(res => res.json()).then(data => setHistory(data)); };
+  useEffect(() => { fetch(`${API_BASE_URL}/api/pests`).then(res => res.json()).then(data => setPests(data)); fetchH(); }, [user]);
+  useEffect(() => { if (selectedPest) fetch(`${API_BASE_URL}/api/moa/${selectedPest}`).then(res => res.json()).then(data => setMoaGroups(data)); }, [selectedPest]);
 
   const handleSave = async (gId) => {
     const formData = new FormData();
     formData.append('user_id', user.id); formData.append('pest_id', selectedPest); formData.append('g_id', gId);
     formData.append('dosage', gapData.dosage); formData.append('phi_days', gapData.phi);
     if (gapData.image) formData.append('image', gapData.image);
-    const res = await fetch('http://localhost:3000/api/history', { method: 'POST', body: formData });
+    const res = await fetch(`${API_BASE_URL}/api/history`, { method: 'POST', body: formData });
     if (res.ok) { fetchH(); alert('บันทึกสำเร็จ'); setGapData({ dosage: '', phi: '', image: null }); }
   };
 
-  const handleDelete = async (id) => { if (window.confirm('🗑️ ลบประวัตินี้?')) { await fetch(`http://localhost:3000/api/history/${id}`, { method: 'DELETE' }); fetchH(); } };
+  const handleDelete = async (id) => { if (window.confirm('🗑️ ลบประวัตินี้?')) { await fetch(`${API_BASE_URL}/api/history/${id}`, { method: 'DELETE' }); fetchH(); } };
 
   const currentPest = pests.find(p => p.pest_id === selectedPest);
 
@@ -204,7 +209,7 @@ function MainApp({ user }) {
             )}
             <div style={styles.card}>
               <h4>📷 Visual Journal ประวัติการจัดการ</h4>
-              <div style={styles.journalScroll}>{history.map(h => (<div key={h.log_id} style={styles.journalCard}><button onClick={() => handleDelete(h.log_id)} style={styles.deleteCircle}>×</button>{h.image_path ? <img src={`http://localhost:3000${h.image_path}`} style={styles.journalImg} /> : <div style={styles.noImg}>No Image</div>}<div style={{ padding: '8px' }}><b>{h.pest_name}</b><br/><small>{new Date(h.usage_date).toLocaleDateString('th-TH')}</small></div></div>))}</div>
+              <div style={styles.journalScroll}>{history.map(h => (<div key={h.log_id} style={styles.journalCard}><button onClick={() => handleDelete(h.log_id)} style={styles.deleteCircle}>×</button>{h.image_path ? <img src={`${API_BASE_URL}${h.image_path}`} style={styles.journalImg} /> : <div style={styles.noImg}>No Image</div>}<div style={{ padding: '8px' }}><b>{h.pest_name}</b><br/><small>{new Date(h.usage_date).toLocaleDateString('th-TH')}</small></div></div>))}</div>
             </div>
           </>
         )}
@@ -217,10 +222,10 @@ function MainApp({ user }) {
   );
 }
 
-// --- 5. Statistics View ---
+// --- 5. Statistics View (แก้ไข fetch URL) ---
 function StatsView({ userId, history, user }) {
   const [stats, setStats] = useState([]);
-  useEffect(() => { if(userId) fetch(`http://localhost:3000/api/stats/${userId}`).then(res => res.json()).then(data => setStats(data)); }, [userId, history]);
+  useEffect(() => { if(userId) fetch(`${API_BASE_URL}/api/stats/${userId}`).then(res => res.json()).then(data => setStats(data)); }, [userId, history]);
   const handleExport = () => {
     const headers = ["วันที่", "อาการ", "กลุ่มยา", "PHI"];
     const rows = history.map(h => [new Date(h.usage_date).toLocaleDateString('th-TH'), h.pest_name, h.g_name, h.phi_days || "0"]);
@@ -245,13 +250,13 @@ function StatsView({ userId, history, user }) {
   );
 }
 
-// --- 6. Auth Screen (Clean UI) ---
+// --- 6. Auth Screen (แก้ไข fetch URL) ---
 function AuthScreen({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true);
   const [form, setForm] = useState({ username: '', password: '', name: '' });
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const res = await fetch(`http://localhost:3000/api/${isLogin ? 'login' : 'register'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+    const res = await fetch(`${API_BASE_URL}/api/${isLogin ? 'login' : 'register'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
     const data = await res.json();
     if (data.error) alert(data.error); else if (isLogin) onLogin(data.user); else { alert('สมัครสำเร็จ!'); setIsLogin(true); }
   };
